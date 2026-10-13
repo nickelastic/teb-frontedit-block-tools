@@ -1,0 +1,554 @@
+/* FrontEdit Block Tools — single chip on the active block (top-level, above all FrontEdit UI) */
+.teb-chip {
+	position: fixed;
+	display: none;
+	gap: 4px;
+	/* Must stay above FrontEdit's own toolbar (.mwp-sfe-inline-editor = 123456).
+	   The chip used to be 123455, and .mwp-sfe-editor-toolbar painted over the
+	   + button, so real clicks on .teb-add landed on the toolbar instead of
+	   opening the inserter (hence the "inserter never appears" E2E failures). */
+	z-index: 123458;
+	pointer-events: auto !important;
+	background: rgba(20, 20, 30, 0.9);
+	border-radius: 6px;
+	padding: 3px;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.teb-chip .teb-btn {
+	border: none;
+	background: #fff;
+	color: #222;
+	width: 26px;
+	height: 26px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+	line-height: 1;
+	pointer-events: auto;
+	user-select: none;
+}
+.teb-chip .teb-btn:hover { background: #fffbe6; }
+.teb-chip .teb-del:hover { background: #ffdddd; }
+
+/* Left gutter drag handle — a patterned vertical strip pinned to the active
+   block's left edge. Acts as the drag source for reordering. */
+.teb-handle {
+	position: fixed;
+	display: none;
+	width: 14px;
+	height: 40px;
+	z-index: 2147483647;
+	pointer-events: auto !important;
+	cursor: grab;
+	border-radius: 4px 0 0 4px;
+	background-color: #3858e9;
+	background-image:
+		repeating-linear-gradient(45deg, rgba(255,255,255,0.55) 0 2px, transparent 2px 6px),
+		repeating-linear-gradient(-45deg, rgba(255,255,255,0.55) 0 2px, transparent 2px 6px);
+	box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.teb-handle:hover { background-color: #2a45c4; }
+.teb-handle:active { cursor: grabbing; }
+/* Block being dragged */
+.teb-dragging { outline: 2px dashed #3858e9 !important; outline-offset: 2px; opacity: 0.6; }
+/* Drop indicators on sibling targets — orange to distinguish from blue hover */
+.teb-drop-before { box-shadow: 0 -3px 0 0 #f59e0b !important; }
+.teb-drop-after  { box-shadow: 0  3px 0 0 #f59e0b !important; }
+
+/* ============================================================
+   Embeds / video: frames must be click-through so the BLOCK can be
+   selected. A cross-origin <iframe> (YouTube/Vimeo) swallows every
+   click — events inside it never reach the parent document — so the
+   block could not be selected, chipped, deleted or duplicated; the
+   click just started playback. FrontEdit's own rules restore
+   pointer-events:auto on bound/active blocks AND their descendants,
+   which re-activates the frame — !important defeats that. This
+   stylesheet only loads for users who can edit the page, and the
+   admin-bar Preview toggle (mwp-sfe-active-preview / mwp-sfe-preview-mode)
+   restores playability.
+   ============================================================ */
+body:not(.mwp-sfe-active-preview):not(.mwp-sfe-preview-mode) [data-mwp-sfe-uuid] iframe,
+body:not(.mwp-sfe-active-preview):not(.mwp-sfe-preview-mode) [data-mwp-sfe-uuid] video {
+	pointer-events: none !important;
+}
+
+/* ============================================================
+   Block outlines while FrontEdit is active.
+   Uses the presence of FrontEdit's context (SFE loaded) as the
+   trigger, not the narrow mwp-sfe-is-editing class which only
+   appears while the inline editor is open on a specific block.
+   ============================================================ */
+body.mwp-sfe-is-editing [data-mwp-sfe-uuid],
+body.mwp-sfe-batch-session-active [data-mwp-sfe-uuid],
+body.mwp-sfe-is-editing .wp-block-column,
+body.mwp-sfe-batch-session-active .wp-block-column {
+	outline: 2px dotted #2e9e4f;
+	outline-offset: 2px;
+	transition: outline-color 0.12s ease;
+}
+body.mwp-sfe-is-editing [data-mwp-sfe-uuid]:hover,
+body.mwp-sfe-batch-session-active [data-mwp-sfe-uuid]:hover,
+body.mwp-sfe-is-editing .wp-block-column:hover,
+body.mwp-sfe-batch-session-active .wp-block-column:hover {
+	outline: 2px solid #1f6fdb;
+	outline-offset: 2px;
+}
+/* While the "Ajouter un bloc" inserter panel is open, the cursor sits over the
+   panel — but a block peeking out behind it can still receive :hover and flash a
+   blue outline. Suppress that leak: keep the dotted-green default while the
+   inserter is open. All other panels already capture the pointer correctly, and
+   the blue hover border stays everywhere else. */
+body.teb-inserter-open [data-mwp-sfe-uuid]:hover,
+body.teb-inserter-open .wp-block-column:hover {
+	outline: 2px dotted #2e9e4f;
+	outline-offset: 2px;
+}
+body.mwp-sfe-is-editing [data-mwp-sfe-uuid].mwp-sfe-element-active {
+	outline: 2px solid #2e9e4f !important;
+	outline-offset: 2px;
+	box-shadow: inset 0 0 0 9999px rgba(46, 158, 79, 0.10),
+	            0 0 0 4px rgba(46, 158, 79, 0.35);
+}
+
+/* A core/column selected through our own handling (FrontEdit won't select
+   individual columns, and columns carry no data-mwp-sfe-uuid). Mirrors the green
+   "selected" treatment so a column shows the same green outline + drop shadow as
+   any other selected block. */
+body.mwp-sfe-is-editing .wp-block-column.teb-col-selected {
+	outline: 2px solid #2e9e4f !important;
+	outline-offset: 2px;
+	box-shadow: inset 0 0 0 9999px rgba(46, 158, 79, 0.10),
+	            0 0 0 4px rgba(46, 158, 79, 0.35);
+}
+
+/* Restore pointer-events for blocks inside columns so they are clickable,
+   deletable, and draggable.  FrontEdit's `body.mwp-sfe-is-editing * {
+   pointer-events: none }` blocks ALL descendants; this lifts column children
+   back out of the lock so clicks, drag handles, and the chip work on
+   content nested inside columns. */
+body.mwp-sfe-is-editing .wp-block-column,
+body.mwp-sfe-is-editing .wp-block-column * {
+	pointer-events: auto;
+}
+
+.teb-inserter {
+	position: fixed;
+	z-index: 2147483647;
+	/* FrontEdit sets `body.mwp-sfe-is-editing * { pointer-events: none }` to lock the
+	   page while editing. Our panel must override that (its specificity wins over our
+	   plain `.teb-inserter` rule), otherwise clicks fall through to the blocks behind
+	   and the buttons become unclickable. !important guarantees we beat it. */
+	pointer-events: auto !important;
+	background: #fff;
+	border: 1px solid #ccc;
+	border-radius: 8px;
+	padding: 12px;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+	width: 220px;
+	/* Never let the panel (including the expanded columns 2/3/4 chooser) grow
+	   past the viewport. Without this, when the active block sits near the page
+	   bottom the panel extends below the fold and its chooser buttons become
+	   unreachable / unclickable. */
+	max-height: calc(100vh - 16px);
+	overflow-y: auto;
+}
+/* Children must also re-enable pointer events: FrontEdit's body.mwp-sfe-is-editing *
+   rule forces pointer-events:none on every descendant, so the panel's own auto is not
+   enough — each button/input inside would still be click-through. */
+.teb-inserter,
+.teb-inserter *,
+.teb-media-modal,
+.teb-media-modal *,
+.teb-modal-overlay,
+.teb-modal-overlay *,
+.teb-chip,
+.teb-chip *,
+.teb-handle,
+.teb-handle *,
+.teb-loader,
+.teb-loader * {
+	pointer-events: auto !important;
+}
+.teb-inserter-head { font-weight: 600; margin-bottom: 8px; }
+.teb-inserter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.teb-type {
+	border: 1px solid #1B7DD9;
+	background: #1B7DD9;
+	color: #fff;
+	border-radius: 5px;
+	padding: 8px;
+	cursor: pointer;
+	font-size: 13px;
+	pointer-events: auto;
+}
+.teb-type:hover { background: #1668b8; border-color: #1668b8; }
+
+.teb-cols-choice {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px solid #eee;
+}
+.teb-cols-label { font-size: 12px; color: #555; flex-basis: 100%; }
+.teb-cols-counts {
+	display: flex;
+	gap: 6px;
+	flex-basis: 100%;
+}
+.teb-cols-opt {
+	border: 1px solid #1B7DD9;
+	background: #fff;
+	color: #1B7DD9;
+	border-radius: 5px;
+	padding: 6px 14px;
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 500;
+	flex: 1 1 0;
+	text-align: center;
+}
+.teb-cols-opt:hover { background: #1B7DD9; color: #fff; }
+/* Layout presets: each button is a self-contained count+width choice with a
+   small visual bar chart so the result is obvious before clicking. */
+.teb-cols-layouts {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px;
+	flex-basis: 100%;
+}
+.teb-cols-layout {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 5px;
+	border: 1px solid #ced4da;
+	background: #fff;
+	border-radius: 6px;
+	padding: 8px 6px 6px;
+	cursor: pointer;
+	font-size: 11px;
+	color: #495057;
+}
+.teb-cols-layout:hover {
+	border-color: #1B7DD9;
+	background: #f0f7fd;
+}
+.teb-layout-bars {
+	display: flex;
+	gap: 3px;
+	height: 18px;
+	width: 100%;
+}
+.teb-layout-bars span {
+	background: #1B7DD9;
+	border-radius: 2px;
+	min-width: 4px;
+}
+.teb-layout-label {
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.teb-cancel {
+	margin-top: 10px;
+	width: 100%;
+	border: none;
+	background: #eee;
+	border-radius: 5px;
+	padding: 6px;
+	cursor: pointer;
+	pointer-events: auto;
+}
+
+/* Loading overlay: spinner + status text while a structural save runs */
+.teb-loader {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483647;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	background: rgba(20, 20, 30, 0.35);
+	pointer-events: auto;
+}
+.teb-loader-box {
+	background: #fff;
+	border-radius: 10px;
+	padding: 18px 22px;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	min-width: 180px;
+}
+.teb-spinner {
+	width: 30px;
+	height: 30px;
+	border: 4px solid #e2e2e2;
+	border-top-color: #3858e9;
+	border-radius: 50%;
+	animation: teb-spin 0.8s linear infinite;
+}
+@keyframes teb-spin { to { transform: rotate(360deg); } }
+.teb-loader-text {
+	font: 14px/1.3 system-ui, sans-serif;
+	color: #222;
+	text-align: center;
+}
+
+/* Media picker modal (Image block: library + upload) */
+.teb-media-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483647;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(20, 20, 30, 0.45);
+	pointer-events: auto;
+}
+.teb-media-box {
+	background: #fff;
+	border-radius: 10px;
+	width: min(680px, 92vw);
+	max-height: 86vh;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+	overflow: hidden;
+}
+.teb-media-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 16px;
+	font: 600 15px/1 system-ui, sans-serif;
+	border-bottom: 1px solid #eee;
+}
+.teb-media-close {
+	border: none;
+	background: transparent;
+	font-size: 22px;
+	line-height: 1;
+	cursor: pointer;
+	color: #888;
+}
+.teb-media-close:hover { color: #222; }
+.teb-media-tabs {
+	display: flex;
+	gap: 4px;
+	padding: 8px 16px 0;
+}
+.teb-media-tab {
+	border: none;
+	background: #f1f1f1;
+	padding: 8px 14px;
+	border-radius: 6px 6px 0 0;
+	cursor: pointer;
+	font-size: 13px;
+	color: #555;
+}
+.teb-media-tab.teb-tab-active { background: #3858e9; color: #fff; }
+.teb-media-body { padding: 12px 16px; overflow: auto; }
+.teb-media-pane[data-pane="upload"] { text-align: center; padding-top: 18px; }
+.teb-media-search { margin-bottom: 10px; }
+.teb-media-search-input {
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid #ccc;
+	border-radius: 6px;
+	font-size: 13px;
+	box-sizing: border-box;
+}
+.teb-media-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+	gap: 10px;
+}
+.teb-media-item {
+	border: 2px solid transparent;
+	background: #f7f7f7;
+	border-radius: 8px;
+	padding: 6px;
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	text-align: left;
+}
+.teb-media-item img {
+	width: 100%;
+	height: 84px;
+	object-fit: cover;
+	border-radius: 4px;
+	display: block;
+}
+.teb-media-item.teb-media-selected { border-color: #3858e9; }
+.teb-media-name {
+	font: 11px/1.2 system-ui, sans-serif;
+	color: #444;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.teb-media-loading, .teb-media-empty { color: #888; font-size: 13px; padding: 18px 4px; }
+.teb-media-file { font-size: 13px; }
+.teb-media-upload-status { margin-top: 12px; font-size: 13px; color: #444; }
+.teb-media-upload-status.teb-media-error { color: #c0392b; }
+.teb-media-foot {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 12px 16px;
+	border-top: 1px solid #eee;
+}
+.teb-media-cancel, .teb-media-insert {
+	border: none;
+	border-radius: 6px;
+	padding: 8px 16px;
+	font-size: 13px;
+	cursor: pointer;
+}
+.teb-media-cancel { background: #eee; color: #333; }
+.teb-media-insert { background: #3858e9; color: #fff; }
+.teb-media-insert:disabled { background: #b9c2ee; cursor: not-allowed; }
+
+/* Responsive columns (inserted via the "Colonnes" block type). We provide the
+   base flex layout here (not relying solely on WordPress block-library CSS,
+   which themes may not enqueue) and honour explicit widths set via the width
+   attribute / flex-basis style. */
+.wp-block-columns {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 20px;
+	min-height: 48px;          /* keep an empty columns block visible/outlined */
+	box-sizing: border-box;
+}
+.wp-block-columns > .wp-block-column {
+	flex: 1 1 0;
+	min-width: 0;
+	min-height: 40px;         /* empty columns still show their green outline */
+	box-sizing: border-box;
+}
+/* Respect explicit widths from the block editor / width attribute.
+   WordPress renders these as style="flex-basis: X%" on the column div. */
+.wp-block-columns > .wp-block-column[style*="flex-basis"] {
+	flex: 0 0 auto;
+}
+@media (max-width: 782px) {
+	.wp-block-columns {
+		flex-direction: column;
+		gap: 12px;
+	}
+	.wp-block-columns > .wp-block-column,
+	.wp-block-columns > .wp-block-column[style*="flex-basis"] {
+		flex-basis: auto !important;
+		width: 100%;
+	}
+}
+
+/* ---- Custom modal dialogs (replaces raw alert/confirm) ---- */
+.teb-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.45);
+	z-index: 2147483646;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: teb-fade-in 0.15s ease;
+}
+@keyframes teb-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.teb-modal {
+	background: #fff;
+	border-radius: 10px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+	padding: 24px 28px 20px;
+	max-width: 400px;
+	width: 90%;
+	font: 14px/1.5 system-ui, -apple-system, sans-serif;
+	color: #1d2327;
+	text-align: center;
+}
+.teb-modal-title {
+	font-size: 16px;
+	font-weight: 600;
+	margin: 0 0 8px;
+}
+.teb-modal-body {
+	margin: 0 0 20px;
+	color: #50575e;
+}
+.teb-modal-body.teb-modal-error { color: #b32d2e; }
+.teb-modal-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: center;
+}
+.teb-modal-btn {
+	border: none;
+	border-radius: 6px;
+	padding: 8px 20px;
+	font: inherit;
+	font-weight: 500;
+	cursor: pointer;
+	transition: background 0.12s;
+}
+.teb-modal-btn-cancel {
+	background: #f0f0f1;
+	color: #1d2327;
+}
+.teb-modal-btn-cancel:hover { background: #dcdcde; }
+.teb-modal-btn-confirm {
+	background: #2271b1;
+	color: #fff;
+}
+.teb-modal-btn-confirm:hover { background: #135e96; }
+.teb-modal-btn-danger {
+	background: #b32d2e;
+	color: #fff;
+}
+.teb-modal-btn-danger:hover { background: #8b2121; }
+.teb-modal-btn-ok {
+	background: #2271b1;
+	color: #fff;
+}
+.teb-modal-btn-ok:hover { background: #135e96; }
+
+/* ---- Admin bar revision arrows ---- */
+#wpadminbar #teb-rev-prev,
+#wpadminbar #teb-rev-next {
+	transition: opacity 0.15s;
+}
+#wpadminbar #teb-rev-prev a,
+#wpadminbar #teb-rev-next a {
+	display: flex !important;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.15);
+	color: #fff !important;
+	font-size: 16px;
+	text-decoration: none;
+	margin: 2px 1px;
+	transition: background 0.15s;
+}
+#wpadminbar #teb-rev-prev a:hover,
+#wpadminbar #teb-rev-next a:hover {
+	background: rgba(255, 255, 255, 0.3);
+}
+#wpadminbar #teb-rev-label {
+	display: flex !important;
+	align-items: center;
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 11px;
+	padding: 0 4px;
+	white-space: nowrap;
+}

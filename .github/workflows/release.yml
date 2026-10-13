@@ -1,0 +1,38 @@
+# Release: build the plugin zip and publish a GitHub Release for vX.Y.Z.
+# Trigger: git tag vX.Y.Z && git push --tags
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build plugin zip
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist/teb-frontedit-block-tools
+          # Plugin folder must sit at the zip root for WP's installer.
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='dist' \
+            ./ dist/teb-frontedit-block-tools/
+          cd dist
+          zip -r "teb-frontedit-block-tools-${VERSION}.zip" teb-frontedit-block-tools
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "TEB FrontEdit Block Tools ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            "dist/teb-frontedit-block-tools-${GITHUB_REF_NAME#v}.zip"
