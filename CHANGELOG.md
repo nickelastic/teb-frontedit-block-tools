@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+* Admin-bar control is now a Preview/Edit slider switch; the chosen mode is stored per user (user meta via the `teb/v1/mode` REST route) and applies to all pages and devices until switched back. Previously every page booted into Edit mode.
+* Preview is the default for users who have not chosen a mode (`teb_default_mode` filter).
+* Block chip/inserter hides in preview when no editor is open (`mwp-sfe-preview-mode`).
+
 ## 1.1.0
 
 * Public reusable release — `teb-` prefix everywhere (slug, `teb_*` functions, `TEB_*` classes/constants, `.teb-*` CSS, `TEB` JS global, text domain `teb-frontedit-block-tools`, REST namespace `teb/v1`).

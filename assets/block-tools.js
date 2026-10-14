@@ -1230,7 +1230,10 @@ var liveAfter = Array.prototype.slice.call(
 	// ---- Bind via event delegation; show only while editing ----
 	function isEditing() {
 		// The chip/inserter only make sense while FrontEdit is in edit mode.
+		// FrontEdit marks preview with mwp-sfe-active-preview (editor was open)
+		// or mwp-sfe-preview-mode (no editor); honour both.
 		if (document.body.classList.contains('mwp-sfe-active-preview')) return false;
+		if (document.body.classList.contains('mwp-sfe-preview-mode')) return false;
 		return !!(window.MWP && window.MWP.SFE);
 	}
 

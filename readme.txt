@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
 Requires Plugins: frontedit-live-block-editor
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -47,6 +47,11 @@ Make sure FrontEdit is active and you are logged in with permission to edit the 
 Yes — hook `teb_l10n` and override any of the 55 string keys, or contribute a translation for the `teb-frontedit-block-tools` text domain.
 
 == Changelog ==
+
+= 1.2.0 =
+* Admin-bar control is now a Preview/Edit slider switch, and the chosen mode is remembered per user across all pages and devices (user meta via the `teb/v1/mode` REST route). Previously every page opened in Edit mode.
+* Preview is now the default mode for users who have not chosen one (filterable via `teb_default_mode`).
+* Block chip/inserter now also hides while FrontEdit is in preview with no active editor (`mwp-sfe-preview-mode`).
 
 = 1.1.0 =
 * Public reusable release: TEB prefix throughout (slug, functions, classes, CSS, JS, text domain, REST namespace `teb/v1`).

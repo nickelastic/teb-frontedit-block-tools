@@ -552,3 +552,57 @@ body.mwp-sfe-is-editing .wp-block-column * {
 	padding: 0 4px;
 	white-space: nowrap;
 }
+
+/* ---- Admin bar Preview/Edit slider switch ---- */
+#wpadminbar #wp-admin-bar-frontedit-toggle > a.ab-item {
+	display: inline-flex !important;
+	align-items: center;
+	position: relative;
+	height: 28px;
+	margin: 2px 6px;
+	padding: 0 !important;
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.12);
+	line-height: 28px;
+	overflow: hidden;
+}
+#wpadminbar #wp-admin-bar-frontedit-toggle .teb-mode-switch {
+	display: inline-flex;
+	align-items: stretch;
+	position: relative;
+	height: 28px;
+}
+#wpadminbar #wp-admin-bar-frontedit-toggle .teb-mode-switch-opt {
+	position: relative;
+	z-index: 2;
+	width: 70px;
+	text-align: center;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.75);
+	white-space: nowrap;
+	transition: color 0.15s ease;
+}
+#wpadminbar #wp-admin-bar-frontedit-toggle .teb-mode-switch-knob {
+	position: absolute;
+	z-index: 1;
+	top: 3px;
+	left: 3px;
+	width: 64px;
+	height: 22px;
+	border-radius: 11px;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+	transition: left 0.18s ease;
+}
+#wpadminbar #wp-admin-bar-frontedit-toggle.is-edit .teb-mode-switch-knob {
+	left: 73px;
+}
+#wpadminbar #wp-admin-bar-frontedit-toggle.is-edit .teb-mode-switch-edit,
+#wpadminbar #wp-admin-bar-frontedit-toggle.is-preview .teb-mode-switch-preview {
+	color: #1d2327;
+	font-weight: 600;
+}
+#wpadminbar #wp-admin-bar-frontedit-toggle.is-edit .teb-mode-switch-edit:hover,
+#wpadminbar #wp-admin-bar-frontedit-toggle.is-preview .teb-mode-switch-preview:hover {
+	color: #1d2327;
+}

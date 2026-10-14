@@ -3,7 +3,7 @@
  * Plugin Name:       TEB FrontEdit Block Tools
  * Plugin URI:        https://github.com/nickelastic/teb-frontedit-block-tools
  * Description:       Extends FrontEdit with structural block operations (insert with type picker, duplicate, delete) keyed off FrontEdit UUIDs.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Author:            Nick Elastic
  * Author URI:        https://github.com/nickelastic
  * License:           GPL-2.0-or-later
@@ -30,7 +30,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'TEB_VERSION', '1.1.0' );
+define( 'TEB_VERSION', '1.2.0' );
 define( 'TEB_PLUGIN_FILE', __FILE__ );
 define( 'TEB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TEB_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
